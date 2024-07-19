@@ -13,6 +13,8 @@ void stop();
 void write_for(int8_t para_Dir_Spd, unsigned long _for);
 
 DEFINE_TASK_STATE(kxnTask_DCmotor){
+    kxnTask_DCmotor_DEPART_F,
+    kxnTask_DCmotor_DEPART_B,
     kxnTask_DCmotor_FORWARD,
     kxnTask_DCmotor_BACKWARD,
     kxnTask_DCmotor_STOP,
@@ -45,7 +47,7 @@ void setup(int pwm_, int in1_, int in2_, unsigned int _departSpeed, unsigned lon
     this->in1 = in1_;
     this->in2 = in2_;
     this->pwm = pwm_;
-    this->departSpeed = _departSpeed;
+    this->departSpeed = _departSpeed*255/100;
     this->departTimes = _departTimes;
 
     pinMode(this->in1, OUTPUT);
@@ -57,14 +59,18 @@ void loop(void)
 {
     switch (getState())
     {
+    case kxnTask_DCmotor_DEPART_F:
+
+        digitalWrite(this->in1, 1);
+        digitalWrite(this->in2, 0);
+        analogWrite(this->pwm, this->departSpeed);
+        kDelay(this->departTimes);
+        setState(kxnTask_DCmotor_FORWARD);
+        break;
+
+
     case kxnTask_DCmotor_FORWARD:
-        if ((this->departSpeed != 0) && (this->departTimes >= 0))
-        {
-            digitalWrite(this->in1, 1);
-            digitalWrite(this->in2, 0);
-            analogWrite(this->pwm, this->departSpeed);
-            kDelay(this->departTimes);
-        }
+
         digitalWrite(this->in1, 1);
         digitalWrite(this->in2, 0);
         analogWrite(this->pwm, this->speed_forward);
@@ -108,14 +114,28 @@ void forward(int iSpeed)
 {
     this->speed_forward = iSpeed * 255 / 100;
     this->start();
-    setState(kxnTask_DCmotor_FORWARD);
+    if ((this->departSpeed != 0) && (this->departTimes > 0))
+    {
+        setState(kxnTask_DCmotor_DEPART_F);
+    }
+    else
+    {
+        setState(kxnTask_DCmotor_FORWARD);
+    }
 }
 
 void backward(int iSpeed)
 {
     this->speed_backward = iSpeed * 255 / 100;
     this->start();
-    setState(kxnTask_DCmotor_BACKWARD);
+    if ((this->departSpeed != 0) && (this->departTimes > 0))
+    {
+        setState(kxnTask_DCmotor_DEPART_B);
+    }
+    else
+    {
+        setState(kxnTask_DCmotor_BACKWARD);
+    }
 }
 
 void start()
